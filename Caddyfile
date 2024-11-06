@@ -1,0 +1,66 @@
+## Caddyfile configuration sample
+## location: /etc/caddy/Caddyfile
+## caddy reload --config /etc/caddy/Caddyfile
+{
+	servers {
+    metrics
+    protocols h1 h2 h3
+	}
+  log default {
+		output stdout
+		format json
+		include http.log.access admin.api
+	}
+  cert_lifetime 180d
+	##auto_https disable_redirects
+}
+(log_file) {
+  log {
+    format filter {
+      wrap console
+      fields {
+        request>headers>User-Agent delete
+      }
+    }
+    output file /var/log/caddy/{args[0]}.access.log {
+       roll_size 10mb
+       roll_keep 3
+       roll_keep_for 7d    
+      }
+  }
+}
+gh.luzy.top {
+  import log_file gh
+  reverse_proxy * localhost:7703
+}
+:80 {
+	redir :443{uri}
+}
+
+# Refer to the Caddy docs for more information:
+# https://caddyserver.com/docs/caddyfile
+<domain> {
+
+	header {
+		alt-svc h3=":443", ma=2592000
+	}
+	route /sample/* {
+		root * /usr/share/caddy
+		file_server
+	}
+	route /share/* {
+		uri strip_prefix /share
+		reverse_proxy localhost:3333
+	}
+	handle /kick/* {
+		uri strip_prefix /kick
+		reverse_proxy localhost:9000
+
+}
+https://example.com {
+   reverse_proxy /path http://localhost:54321 {
+      header_up Host {http.reverse_proxy.upstream.hostport} 
+      header_down Access-Control-Allow-Headers * 
+      header_down Access-Control-Allow-Origin *
+   }
+}
